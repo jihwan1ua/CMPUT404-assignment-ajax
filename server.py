@@ -91,7 +91,7 @@ Also retrieve json from client using flask_post_json method.
 @app.route("/")
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return redirect("/static/index.html"), 301
+    return redirect("/static/index.html", code = 302)
 
 # we dont return myWorld.world() here since we only using entity
 # so we need to get entity then return that to json
