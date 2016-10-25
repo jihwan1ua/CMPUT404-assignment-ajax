@@ -6,7 +6,7 @@
     <meta content='width=device-width; height=device-height; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;' name='viewport' />
     <meta name="viewport" content="width=device-width" />
     <meta name="license" content="
-        Copyright 2013 Abram Hindle
+        Copyright 2013 Abram Hindle, Ji Hwan Kim
         
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
@@ -40,6 +40,10 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
                 if (xhr.status==200) {
                     //XXX: parse some JSON from the request!
                     //XXX: Pass the data to the callback!
+                    // use JSON.parse(json_object);
+                    // xhr.responseText contains JSON code
+                    var jsonResponse = JSON.parse(xhr.responseText);
+                    callback(jsonResponse);
                 }
             } 
             catch(e) {
@@ -50,6 +54,15 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
     //XXX: POST to a URL
     //XXX: set the mimetype and the accept headers!
     // Remember to use application/json !
+    // use xhr.open to open an url with http method
+    xhr.open("POST",url);
+    // use xhr.setRequestHeader to add header {header, value}
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('Accept', 'application/json');
+    // once you use requestheader after open, you now need to send it
+    // JSON.stringify will send json object from client to the server
+    xhr.send(JSON.stringify(objects));
+
 }
 
 
@@ -63,7 +76,14 @@ function drawCircle(context,entity) {
         var x = entity["x"];
         var y = entity["y"];
         //moveTo(x,y);
-        fillStyle = entity["colour"];
+        // trying gradient
+
+        var grd=context.createLinearGradient(0,0,170,0);
+        grd.addColorStop(0,"black");
+        grd.addColorStop(1,"white");
+        context.fillStyle=grd;
+
+        //fillStyle = entity["colour"];
         strokeStyle = fillStyle;
         arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
         stroke();                                
@@ -136,8 +156,23 @@ function getPosition(e) {
 
 function addEntity(entity, data) {
     world[entity] = data;
-    drawNextFrame(); // (but should we?)
+    //drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just  modified!
+    // call sendjson function to send the entity and data
+    // toString to change varriable into string
+
+    // this one doesn't work???
+    // toString should stringify entity
+    var path = 'http://127.0.0.1:5000/entity/'+entity.toString();
+    
+    //sendJSONXMLHTTPRequest(path + entity, data);
+
+    // need the function for callback to sendJSONXHLHTTPReqeust
+    var callback = function(data) {
+        drawNextFrame();
+    }
+
+    var result = sendJSONXMLHTTPRequest(path, data, callback);
 
 }
 
@@ -255,13 +290,44 @@ mouse.mouseuppers.push(function(x,y,clicked,e) {
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
+    var color = document.getElementById('c');
+    var context = color.getContext('2d');
+    context.shadowBlur = 20;
+    context.shadowColor = 'white';
+    context.fillStyle = 'green';
+    //addEntityWithoutName({'x':x,'y':y,'colour':'green','radius':10});
+
+    addEntityWithoutName({'x':x,'y':y,'colour':context,
                           'radius':10});
 });
 
 
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
+    // make new XMLHttpRequest variable
+    var xhr = new XMLHttpRequest();
+    // need to open the xhr with get first to get the world
+    // url is hard coded with http://127.0.0.1:5000/world
+    xhr.open('GET','http://127.0.0.1:5000/world');
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState==4) {
+            try {
+                if (xhr.status==200) {
+                    //XXX: parse some JSON from the request!
+                    //XXX: Pass the data to the callback!
+                    // use JSON.parse(json_object);
+                    // xhr.responseText contains JSON code
+                    // update the world
+                    world = JSON.parse(xhr.responseText);
+                }
+            } 
+            catch(e) {
+                alert('Error: ' + e.name);
+            }
+        }
+        drawNextFrame();
+    };
+
     drawFrame();
 }
 
